@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Транзакція</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;700&family=Inter:wght@400;500&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  :root {
+    --bg: #0f0f0f;
+    --surface: #1a1a1a;
+    --surface2: #242424;
+    --border: #2e2e2e;
+    --text: #f0f0f0;
+    --muted: #666;
+    --income: #00e676;
+    --expense: #ff4444;
+    --accent: #fff;
+  }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 20px 16px 40px;
+    overflow-x: hidden;
+  }
+
+  .header {
+    margin-bottom: 28px;
+  }
+
+  .header h1 {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    line-height: 1.2;
+  }
+
+  .header p {
+    color: var(--muted);
+    font-size: 13px;
+    margin-top: 6px;
+  }
+
+  /* Type selector */
+  .type-selector {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+
+  .type-btn {
+    border: 1.5px solid var(--border);
+    background: var(--surface);
+    border-radius: 14px;
+    padding: 16px 12px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-align: center;
+  }
+
+  .type-btn .icon {
+    font-size: 24px;
+    display: block;
+    margin-bottom: 6px;
+  }
+
+  .type-btn .label {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    color: var(--muted);
+    transition: color 0.15s;
+  }
+
+  .type-btn.income.active {
+    border-color: var(--income);
+    background: rgba(0, 230, 118, 0.08);
+  }
+  .type-btn.income.active .label { color: var(--income); }
+
+  .type-btn.expense.active {
+    border-color: var(--expense);
+    background: rgba(255, 68, 68, 0.08);
+  }
+  .type-btn.expense.active .label { color: var(--expense); }
+
+  /* Section label */
+  .section-label {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  /* Projects grid */
+  .projects-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 24px;
+  }
+
+  .project-btn {
+    border: 1.5px solid var(--border);
+    background: var(--surface);
+    border-radius: 12px;
+    padding: 13px 14px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-align: left;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .project-btn.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--surface2);
+  }
+
+  /* Amount input */
+  .amount-wrap {
+    position: relative;
+    margin-bottom: 24px;
+  }
+
+  .amount-input {
+    width: 100%;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 14px;
+    padding: 18px 56px 18px 20px;
+    font-family: 'Unbounded', sans-serif;
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s;
+    -webkit-appearance: none;
+  }
+
+  .amount-input:focus {
+    border-color: #555;
+  }
+
+  .amount-input::placeholder {
+    color: #333;
+  }
+
+  .currency-badge {
+    position: absolute;
+    right: 18px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-family: 'Unbounded', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+  }
+
+  /* Date input */
+  .date-input {
+    width: 100%;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 14px;
+    padding: 16px 20px;
+    font-family: 'Inter', sans-serif;
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s;
+    margin-bottom: 12px;
+    -webkit-appearance: none;
+    color-scheme: dark;
+  }
+
+  .date-input:focus { border-color: #555; }
+  .date-input:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+
+  /* Today checkbox */
+  .today-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 24px;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .today-wrap input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    border-radius: 6px;
+    border: 1.5px solid var(--border);
+    background: var(--surface);
+    appearance: none;
+    -webkit-appearance: none;
+    cursor: pointer;
+    position: relative;
+    flex-shrink: 0;
+    transition: all 0.15s;
+  }
+
+  .today-wrap input[type="checkbox"]:checked {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .today-wrap input[type="checkbox"]:checked::after {
+    content: '';
+    position: absolute;
+    left: 5px;
+    top: 2px;
+    width: 6px;
+    height: 10px;
+    border: 2px solid #000;
+    border-top: none;
+    border-left: none;
+    transform: rotate(45deg);
+  }
+
+  .today-wrap span {
+    font-size: 14px;
+    color: var(--muted);
+  }
+
+  .today-wrap span b {
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  /* Submit button */
+  .submit-btn {
+    width: 100%;
+    padding: 18px;
+    border: none;
+    border-radius: 14px;
+    font-family: 'Unbounded', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    background: var(--accent);
+    color: #000;
+  }
+
+  .submit-btn:active { transform: scale(0.98); }
+  .submit-btn:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
+
+  .submit-btn.income-mode { background: var(--income); color: #000; }
+  .submit-btn.expense-mode { background: var(--expense); color: #fff; }
+
+  /* Success state */
+  .success-screen {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 60vh;
+    text-align: center;
+    gap: 16px;
+  }
+
+  .success-icon {
+    font-size: 64px;
+    animation: pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+
+  @keyframes pop {
+    0% { transform: scale(0); }
+    100% { transform: scale(1); }
+  }
+
+  .success-title {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+  }
+
+  .success-detail {
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin-bottom: 24px;
+  }
+
+  /* Error */
+  .error-msg {
+    color: var(--expense);
+    font-size: 12px;
+    margin-top: -18px;
+    margin-bottom: 18px;
+    padding-left: 4px;
+    display: none;
+  }
+</style>
+</head>
+<body>
+
+<div id="form-screen">
+  <div class="header">
+    <h1>Нова транзакція</h1>
+    <p>Заповни форму і натисни Додати</p>
+  </div>
+
+  <!-- Type -->
+  <div class="section-label">Тип</div>
+  <div class="type-selector">
+    <div class="type-btn income" onclick="selectType('income', this)">
+      <span class="icon">💰</span>
+      <span class="label">Надходження</span>
+    </div>
+    <div class="type-btn expense" onclick="selectType('expense', this)">
+      <span class="icon">💸</span>
+      <span class="label">Списання</span>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Project -->
+  <div class="section-label">Проект</div>
+  <div class="projects-grid">
+    <div class="project-btn" onclick="selectProject('Adastra', this)">Adastra</div>
+    <div class="project-btn" onclick="selectProject('Svetoria', this)">Svetoria</div>
+    <div class="project-btn" onclick="selectProject('AnneetteGortz', this)">AnneetteGortz</div>
+    <div class="project-btn" onclick="selectProject('Lifesavingmerch', this)">Lifesavingmerch</div>
+    <div class="project-btn" onclick="selectProject('Zavod', this)">Zavod</div>
+    <div class="project-btn" onclick="selectProject('O bag', this)">O bag</div>
+    <div class="project-btn" onclick="selectProject('Bimba Y Lola', this)" style="grid-column: span 2;">Bimba Y Lola</div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Amount -->
+  <div class="section-label">Сума</div>
+  <div class="amount-wrap">
+    <input class="amount-input" type="number" id="amount" placeholder="0" inputmode="decimal" oninput="onInput()">
+    <span class="currency-badge">₴</span>
+  </div>
+  <div class="error-msg" id="error-msg">Введи коректну суму</div>
+
+  <!-- Date -->
+  <div class="section-label">Дата</div>
+  <input class="date-input" type="date" id="date-input" oninput="updateSubmit()">
+  <label class="today-wrap">
+    <input type="checkbox" id="today-check" onchange="toggleToday(this.checked)">
+    <span>Сьогоднішня дата — <b id="today-label"></b></span>
+  </label>
+
+  <!-- Submit -->
+  <button class="submit-btn" id="submit-btn" onclick="submit()" disabled>Додати транзакцію</button>
+</div>
+
+<div class="success-screen" id="success-screen">
+  <div class="success-icon" id="success-icon">✅</div>
+  <div class="success-title">Записано!</div>
+  <div class="success-detail" id="success-detail"></div>
+</div>
+
+<script>
+  const tg = window.Telegram?.WebApp;
+  if (tg) { tg.ready(); tg.expand(); }
+
+  let selectedType = null;
+  let selectedProject = null;
+
+  // Ініціалізуємо сьогоднішню дату
+  const todayDate = new Date();
+  const todayISO = todayDate.toISOString().split('T')[0]; // YYYY-MM-DD для input[type=date]
+  const todayFormatted = todayDate.toLocaleDateString('uk-UA'); // DD.MM.YYYY для відображення
+
+  document.getElementById('today-label').textContent = todayFormatted;
+
+  function toggleToday(checked) {
+    const dateInput = document.getElementById('date-input');
+    if (checked) {
+      dateInput.value = todayISO;
+      dateInput.disabled = true;
+    } else {
+      dateInput.disabled = false;
+      dateInput.value = '';
+    }
+    updateSubmit();
+  }
+
+  function getSelectedDate() {
+    const val = document.getElementById('date-input').value;
+    if (!val) return null;
+    // Конвертуємо YYYY-MM-DD → DD.MM.YYYY
+    const [y, m, d] = val.split('-');
+    return `${d}.${m}.${y}`;
+  }
+
+  function selectType(type, el) {
+    selectedType = type;
+    document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+    el.classList.add('active');
+    updateSubmit();
+  }
+
+  function selectProject(name, el) {
+    selectedProject = name;
+    document.querySelectorAll('.project-btn').forEach(b => b.classList.remove('active'));
+    el.classList.add('active');
+    updateSubmit();
+  }
+
+  function onInput() {
+    document.getElementById('error-msg').style.display = 'none';
+    updateSubmit();
+  }
+
+  function updateSubmit() {
+    const amount = parseFloat(document.getElementById('amount').value);
+    const date = getSelectedDate();
+    const btn = document.getElementById('submit-btn');
+    const ready = selectedType && selectedProject && amount > 0 && date;
+    btn.disabled = !ready;
+    btn.className = 'submit-btn' + (selectedType === 'income' ? ' income-mode' : selectedType === 'expense' ? ' expense-mode' : '');
+  }
+
+  async function submit() {
+    const amount = parseFloat(document.getElementById('amount').value);
+    const date = getSelectedDate();
+
+    if (!amount || amount <= 0) {
+      document.getElementById('error-msg').style.display = 'block';
+      return;
+    }
+
+    const btn = document.getElementById('submit-btn');
+    btn.disabled = true;
+    btn.textContent = 'Відправляємо...';
+
+    const typeLabel = selectedType === 'income' ? 'Надходження' : 'Списання';
+    const now = new Date();
+    const data = {
+      type: typeLabel,
+      project: selectedProject,
+      amount: amount,
+      currency: 'UAH',
+      date: date,
+      time: now.toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' }),
+      telegram_user: tg?.initDataUnsafe?.user?.username || tg?.initDataUnsafe?.user?.first_name || 'unknown'
+    };
+
+    try {
+      const response = await fetch('ТВІЙ_N8N_WEBHOOK_URL', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+
+      if (!response.ok) throw new Error('Server error');
+
+      document.getElementById('form-screen').style.display = 'none';
+      const successScreen = document.getElementById('success-screen');
+      successScreen.style.display = 'flex';
+      document.getElementById('success-icon').textContent = selectedType === 'income' ? '💰' : '💸';
+      document.getElementById('success-detail').innerHTML =
+        `<b>${typeLabel}</b><br>${selectedProject}<br>${amount.toFixed(2)} ₴<br><br>📅 ${date}`;
+
+      setTimeout(() => { if (tg) tg.close(); }, 2000);
+
+    } catch(e) {
+      btn.disabled = false;
+      btn.textContent = 'Спробувати ще раз';
+      btn.style.background = '#ff4444';
+      btn.style.color = '#fff';
+    }
+  }
+</script>
+</body>
+</html>
