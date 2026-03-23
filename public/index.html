@@ -477,7 +477,7 @@
     try {
       const response = await fetch('https://n8n-production-c543.up.railway.app/webhook/mini-app-transaction', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify(data)
       });
 
