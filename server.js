@@ -3,6 +3,25 @@ const path = require('path');
 const app = express();
 
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.json());
+
+const N8N_WEBHOOK = 'https://n8n-production-c543.up.railway.app/webhook/mini-app-transaction';
+
+// Проксі — приймає запит від Mini App і передає в N8N
+app.post('/submit', async (req, res) => {
+  try {
+    const response = await fetch(N8N_WEBHOOK, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req.body)
+    });
+    const text = await response.text();
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('Proxy error:', e);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
 
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
