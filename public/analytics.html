@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Аналітика</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;700&family=Inter:wght@400;500;600&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  :root {
+    --bg: #0f0f0f;
+    --surface: #1a1a1a;
+    --surface2: #242424;
+    --border: #2e2e2e;
+    --text: #f0f0f0;
+    --muted: #666;
+    --income: #00e676;
+    --expense: #ff4444;
+    --accent: #fff;
+  }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Header */
+  .header {
+    padding: 20px 16px 0;
+    margin-bottom: 16px;
+  }
+
+  .header h1 {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  /* Tabs */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    padding: 0 16px;
+    margin-bottom: 16px;
+  }
+
+  .tab {
+    flex: 1;
+    padding: 10px 4px;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    font-family: 'Unbounded', sans-serif;
+    font-size: 9px;
+    font-weight: 600;
+    color: var(--muted);
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s;
+    letter-spacing: 0.3px;
+  }
+
+  .tab.active {
+    background: var(--surface2);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* Filters */
+  .filters {
+    padding: 0 16px;
+    margin-bottom: 16px;
+  }
+
+  .section-label {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .projects-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+
+  .project-chip {
+    border: 1.5px solid var(--border);
+    background: var(--surface);
+    border-radius: 8px;
+    padding: 9px 10px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted);
+    transition: all 0.15s;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .project-chip.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--surface2);
+  }
+
+  .period-row {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+
+  .period-btn {
+    border: 1.5px solid var(--border);
+    background: var(--surface);
+    border-radius: 8px;
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--muted);
+    transition: all 0.15s;
+  }
+
+  .period-btn.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--surface2);
+  }
+
+  .custom-dates {
+    display: none;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .custom-dates.show { display: flex; }
+
+  .date-input {
+    flex: 1;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 13px;
+    color: var(--text);
+    outline: none;
+    color-scheme: dark;
+  }
+
+  .apply-btn {
+    width: 100%;
+    padding: 14px;
+    background: var(--accent);
+    color: #000;
+    border: none;
+    border-radius: 10px;
+    font-family: 'Unbounded', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+    margin-bottom: 16px;
+  }
+
+  .apply-btn:active { transform: scale(0.98); }
+  .apply-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  /* Content */
+  .content { padding: 0 16px 40px; }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* Loading */
+  .loading {
+    text-align: center;
+    padding: 40px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  /* Balance cards */
+  .balance-summary {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .summary-card {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+  }
+
+  .summary-card.income { border-color: rgba(0,230,118,0.3); }
+  .summary-card.expense { border-color: rgba(255,68,68,0.3); }
+
+  .summary-card .slabel {
+    font-size: 10px;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+
+  .summary-card .svalue {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  .summary-card.income .svalue { color: var(--income); }
+  .summary-card.expense .svalue { color: var(--expense); }
+
+  .balance-total {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .balance-total .blabel {
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .balance-total .bvalue {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  .bvalue.positive { color: var(--income); }
+  .bvalue.negative { color: var(--expense); }
+
+  /* Project balance list */
+  .project-balance-item {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .pbi-name {
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .pbi-details {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  .pbi-balance {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    text-align: right;
+  }
+
+  .pbi-balance.positive { color: var(--income); }
+  .pbi-balance.negative { color: var(--expense); }
+
+  /* Transactions */
+  .tx-item {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+
+  .tx-left { flex: 1; }
+
+  .tx-type {
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 2px;
+  }
+
+  .tx-project {
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 2px;
+  }
+
+  .tx-date {
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .tx-amount {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    text-align: right;
+  }
+
+  .tx-amount.income { color: var(--income); }
+  .tx-amount.expense { color: var(--expense); }
+
+  /* Chart */
+  .chart-wrap {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+  }
+
+  .chart-wrap canvas { max-height: 260px; }
+
+  .no-data {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>📊 Аналітика</h1>
+</div>
+
+<!-- Tabs -->
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('balance')">💰 Баланс</div>
+  <div class="tab" onclick="switchTab('transactions')">📋 Транзакції</div>
+  <div class="tab" onclick="switchTab('chart')">📈 Графік</div>
+</div>
+
+<!-- Filters -->
+<div class="filters">
+  <div class="section-label">Проекти</div>
+  <div class="projects-grid">
+    <div class="project-chip active" onclick="toggleProject('Adastra', this)">Adastra</div>
+    <div class="project-chip active" onclick="toggleProject('Svetoria', this)">Svetoria</div>
+    <div class="project-chip active" onclick="toggleProject('AnneetteGortz', this)">AnneetteGortz</div>
+    <div class="project-chip active" onclick="toggleProject('Lifesavingmerch', this)">Lifesavingmerch</div>
+    <div class="project-chip active" onclick="toggleProject('Zavod', this)">Zavod</div>
+    <div class="project-chip active" onclick="toggleProject('Obag', this)">O bag</div>
+    <div class="project-chip active" onclick="toggleProject('Bimba Y Lola', this)" style="grid-column: span 2;">Bimba Y Lola</div>
+  </div>
+
+  <div class="section-label">Період</div>
+  <div class="period-row">
+    <div class="period-btn" onclick="setPeriod('day', this)">День</div>
+    <div class="period-btn" onclick="setPeriod('week', this)">Тиждень</div>
+    <div class="period-btn active" onclick="setPeriod('month', this)">Місяць</div>
+    <div class="period-btn" onclick="setPeriod('all', this)">Весь час</div>
+    <div class="period-btn" onclick="setPeriod('custom', this)">Діапазон</div>
+  </div>
+
+  <div class="custom-dates" id="custom-dates">
+    <input class="date-input" type="date" id="date-from" placeholder="Від">
+    <input class="date-input" type="date" id="date-to" placeholder="До">
+  </div>
+
+  <button class="apply-btn" onclick="loadData()">Застосувати фільтри</button>
+</div>
+
+<!-- Content -->
+<div class="content">
+  <!-- Balance tab -->
+  <div class="tab-panel active" id="panel-balance">
+    <div class="loading">Завантаження...</div>
+  </div>
+
+  <!-- Transactions tab -->
+  <div class="tab-panel" id="panel-transactions">
+    <div class="loading">Завантаження...</div>
+  </div>
+
+  <!-- Chart tab -->
+  <div class="tab-panel" id="panel-chart">
+    <div class="loading">Завантаження...</div>
+  </div>
+</div>
+
+<script>
+  const tg = window.Telegram?.WebApp;
+  if (tg) { tg.ready(); tg.expand(); }
+
+  let selectedProjects = ['Adastra','Svetoria','AnneetteGortz','Lifesavingmerch','Zavod','Obag','Bimba Y Lola'];
+  let selectedPeriod = 'month';
+  let currentTab = 'balance';
+  let chartInstance = null;
+  let lastData = null;
+
+  function switchTab(tab) {
+    currentTab = tab;
+    document.querySelectorAll('.tab').forEach((t, i) => {
+      t.classList.toggle('active', ['balance','transactions','chart'][i] === tab);
+    });
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('panel-' + tab).classList.add('active');
+    if (lastData) renderData(lastData);
+  }
+
+  function toggleProject(name, el) {
+    if (selectedProjects.includes(name)) {
+      if (selectedProjects.length === 1) return;
+      selectedProjects = selectedProjects.filter(p => p !== name);
+      el.classList.remove('active');
+    } else {
+      selectedProjects.push(name);
+      el.classList.add('active');
+    }
+  }
+
+  function setPeriod(period, el) {
+    selectedPeriod = period;
+    document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+    el.classList.add('active');
+    document.getElementById('custom-dates').classList.toggle('show', period === 'custom');
+  }
+
+  async function loadData() {
+    document.querySelectorAll('.tab-panel').forEach(p => {
+      p.innerHTML = '<div class="loading">Завантаження...</div>';
+    });
+
+    const body = {
+      projects: selectedProjects,
+      period: selectedPeriod
+    };
+
+    if (selectedPeriod === 'custom') {
+      const from = document.getElementById('date-from').value;
+      const to = document.getElementById('date-to').value;
+      if (from) {
+        const [y,m,d] = from.split('-');
+        body.dateFrom = `${d}.${m}.${y}`;
+      }
+      if (to) {
+        const [y,m,d] = to.split('-');
+        body.dateTo = `${d}.${m}.${y}`;
+      }
+    }
+
+    try {
+      const resp = await fetch('/analytics', {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify(body)
+      });
+
+      if (!resp.ok) throw new Error('Server error');
+      const data = await resp.json();
+      lastData = data;
+      renderData(data);
+    } catch(e) {
+      document.querySelectorAll('.tab-panel').forEach(p => {
+        p.innerHTML = '<div class="no-data">❌ Помилка завантаження</div>';
+      });
+    }
+  }
+
+  function renderData(data) {
+    if (currentTab === 'balance') renderBalance(data);
+    if (currentTab === 'transactions') renderTransactions(data);
+    if (currentTab === 'chart') renderChart(data);
+  }
+
+  function fmt(n) {
+    return Number(n).toLocaleString('uk-UA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function renderBalance(data) {
+    const panel = document.getElementById('panel-balance');
+    const { balances } = data;
+
+    let totalIncome = 0, totalExpense = 0;
+    Object.values(balances).forEach(b => {
+      totalIncome += b.income;
+      totalExpense += b.expense;
+    });
+    const totalBalance = totalIncome - totalExpense;
+
+    let html = `
+      <div class="balance-summary">
+        <div class="summary-card income">
+          <div class="slabel">Надходження</div>
+          <div class="svalue">+${fmt(totalIncome)} ₴</div>
+        </div>
+        <div class="summary-card expense">
+          <div class="slabel">Списання</div>
+          <div class="svalue">-${fmt(totalExpense)} ₴</div>
+        </div>
+      </div>
+      <div class="balance-total">
+        <div class="blabel">Загальний баланс</div>
+        <div class="bvalue ${totalBalance >= 0 ? 'positive' : 'negative'}">${totalBalance >= 0 ? '+' : ''}${fmt(totalBalance)} ₴</div>
+      </div>
+    `;
+
+    const sorted = Object.entries(balances).sort((a,b) => (b[1].income - b[1].expense) - (a[1].income - a[1].expense));
+
+    for (const [name, b] of sorted) {
+      const bal = b.income - b.expense;
+      html += `
+        <div class="project-balance-item">
+          <div>
+            <div class="pbi-name">${name}</div>
+            <div class="pbi-details">↑ ${fmt(b.income)} ₴ &nbsp; ↓ ${fmt(b.expense)} ₴</div>
+          </div>
+          <div class="pbi-balance ${bal >= 0 ? 'positive' : 'negative'}">${bal >= 0 ? '+' : ''}${fmt(bal)} ₴</div>
+        </div>
+      `;
+    }
+
+    if (sorted.length === 0) html += '<div class="no-data">Немає даних за вибраний період</div>';
+    panel.innerHTML = html;
+  }
+
+  function renderTransactions(data) {
+    const panel = document.getElementById('panel-transactions');
+    const { transactions } = data;
+
+    if (!transactions || transactions.length === 0) {
+      panel.innerHTML = '<div class="no-data">Немає транзакцій за вибраний період</div>';
+      return;
+    }
+
+    let html = '';
+    for (const tx of transactions) {
+      const isIncome = tx.type.toLowerCase().includes('надходження');
+      const amount = tx.amount ? `${tx.amount} ₴` : '—';
+      html += `
+        <div class="tx-item">
+          <div class="tx-left">
+            <div class="tx-type">${tx.type}</div>
+            <div class="tx-project">${tx.project}</div>
+            <div class="tx-date">${tx.date}</div>
+          </div>
+          <div class="tx-amount ${isIncome ? 'income' : 'expense'}">${isIncome ? '+' : '-'}${amount}</div>
+        </div>
+      `;
+    }
+
+    panel.innerHTML = html;
+  }
+
+  function renderChart(data) {
+    const panel = document.getElementById('panel-chart');
+    const { chartLabels, chartIncome, chartExpense } = data;
+
+    if (!chartLabels || chartLabels.length === 0) {
+      panel.innerHTML = '<div class="no-data">Немає даних для графіка</div>';
+      return;
+    }
+
+    panel.innerHTML = '<div class="chart-wrap"><canvas id="myChart"></canvas></div>';
+
+    if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+
+    const ctx = document.getElementById('myChart').getContext('2d');
+    chartInstance = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: chartLabels,
+        datasets: [
+          {
+            label: 'Надходження',
+            data: chartIncome,
+            borderColor: '#00e676',
+            backgroundColor: 'rgba(0,230,118,0.08)',
+            borderWidth: 2,
+            pointRadius: 3,
+            tension: 0.3,
+            fill: true
+          },
+          {
+            label: 'Списання',
+            data: chartExpense,
+            borderColor: '#ff4444',
+            backgroundColor: 'rgba(255,68,68,0.08)',
+            borderWidth: 2,
+            pointRadius: 3,
+            tension: 0.3,
+            fill: true
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: {
+            labels: { color: '#888', font: { size: 11 } }
+          }
+        },
+        scales: {
+          x: {
+            ticks: { color: '#555', font: { size: 10 }, maxTicksLimit: 8 },
+            grid: { color: '#222' }
+          },
+          y: {
+            ticks: { color: '#555', font: { size: 10 } },
+            grid: { color: '#222' }
+          }
+        }
+      }
+    });
+  }
+
+  // Автозавантаження при відкритті
+  loadData();
+</script>
+</body>
+</html>

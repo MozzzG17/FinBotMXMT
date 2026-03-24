@@ -6,8 +6,9 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
 const N8N_WEBHOOK = 'https://n8n-production-c543.up.railway.app/webhook/mini-app-transaction';
+const N8N_ANALYTICS = 'https://n8n-production-c543.up.railway.app/webhook/analytics-data';
 
-// Проксі — приймає запит від Mini App і передає в N8N
+// Проксі для додавання транзакцій
 app.post('/submit', async (req, res) => {
   try {
     const response = await fetch(N8N_WEBHOOK, {
@@ -15,10 +16,26 @@ app.post('/submit', async (req, res) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(req.body)
     });
-    const text = await response.text();
+    await response.text();
     res.json({ ok: true });
   } catch (e) {
-    console.error('Proxy error:', e);
+    console.error('Submit proxy error:', e);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// Проксі для аналітики
+app.post('/analytics', async (req, res) => {
+  try {
+    const response = await fetch(N8N_ANALYTICS, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req.body)
+    });
+    const data = await response.json();
+    res.json(data);
+  } catch (e) {
+    console.error('Analytics proxy error:', e);
     res.status(500).json({ ok: false, error: e.message });
   }
 });
